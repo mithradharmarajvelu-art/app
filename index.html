@@ -1,0 +1,271 @@
+
+<!DOCTYPE html>
+<html lang="en" ng-app="studentApp">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Student Registration System</title>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial;
+            max-width: 600px;
+            margin: 30px auto;
+            padding: 20px;
+            background: #f2f5f9;
+        }
+
+        h2, h3 {
+            color: #234a75;
+        }
+
+        input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px;
+            margin: 8px 0;
+        }
+
+        button {
+            padding: 8px 12px;
+            margin: 5px 3px;
+            cursor: pointer;
+        }
+
+        li {
+            background: white;
+            padding: 12px;
+            margin: 10px 0;
+        }
+
+        .message {
+            color: green;
+        }
+
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+
+<body ng-controller="StudentController">
+
+    <h2>Student Registration System</h2>
+
+    <!-- CREATE -->
+    <h3>Register Student</h3>
+
+    <form ng-submit="addStudent()">
+        <input type="text"
+               ng-model="newStudent.name"
+               placeholder="Enter student name"
+               required>
+
+        <input type="text"
+               ng-model="newStudent.department"
+               placeholder="Enter department"
+               required>
+
+        <button type="submit" ng-disabled="saving">
+            Register Student
+        </button>
+    </form>
+
+    <p class="message">{{message}}</p>
+    <p class="error">{{error}}</p>
+
+    <!-- UPDATE -->
+    <div ng-if="editingStudent">
+        <h3>Edit Student</h3>
+
+        <form ng-submit="updateStudent()">
+            <input type="text"
+                   ng-model="editingStudent.name"
+                   placeholder="Student name"
+                   required>
+
+            <input type="text"
+                   ng-model="editingStudent.department"
+                   placeholder="Department"
+                   required>
+
+            <button type="submit" ng-disabled="saving">
+                Save Changes
+            </button>
+
+            <button type="button" ng-click="cancelEdit()">
+                Cancel
+            </button>
+        </form>
+    </div>
+
+    <!-- READ -->
+    <h3>Registered Students</h3>
+
+    <p ng-if="loading">Loading students...</p>
+
+    <p ng-if="!loading && students.length === 0">
+        No students registered.
+    </p>
+
+    <ul>
+        <li ng-repeat="student in students track by student._id">
+
+            <strong>{{student.name}}</strong>
+            - {{student.department}}
+
+            <!-- UPDATE BUTTON -->
+            <button type="button" ng-click="editStudent(student)">
+                Edit
+            </button>
+
+            <!-- DELETE BUTTON -->
+            <button type="button"
+                    ng-click="removeStudent(student._id)">
+                Delete
+            </button>
+
+        </li>
+    </ul>
+
+    <script>
+        var app = angular.module("studentApp", []);
+
+        app.controller("StudentController",
+            function($scope, $http) {
+
+            $scope.students = [];
+            $scope.newStudent = {};
+            $scope.editingStudent = null;
+            $scope.message = "";
+            $scope.error = "";
+            $scope.loading = false;
+            $scope.saving = false;
+
+            // READ: Load all students
+            $scope.loadStudents = function() {
+                $scope.loading = true;
+
+                $http.get("/students")
+                    .then(function(response) {
+                        $scope.students = response.data;
+                    })
+                    .catch(function() {
+                        $scope.error = "Could not load students.";
+                    })
+                    .finally(function() {
+                        $scope.loading = false;
+                    });
+            };
+
+            // CREATE: Add a student
+            $scope.addStudent = function() {
+                if ($scope.saving) return;
+
+                $scope.saving = true;
+                $scope.message = "";
+                $scope.error = "";
+
+                $http.post("/students", $scope.newStudent)
+                    .then(function(response) {
+                        $scope.students.push(response.data);
+                        $scope.newStudent = {};
+                        $scope.message = "Student registered successfully!";
+                    })
+                    .catch(function(response) {
+                        $scope.error =
+                            response.data.error || "Registration failed.";
+                    })
+                    .finally(function() {
+                        $scope.saving = false;
+                    });
+            };
+
+            // Start editing a student
+            $scope.editStudent = function(student) {
+                $scope.message = "";
+                $scope.error = "";
+
+                $scope.editingStudent = {
+                    _id: student._id,
+                    name: student.name,
+                    department: student.department
+                };
+            };
+
+            // UPDATE: Save changes
+            $scope.updateStudent = function() {
+                if ($scope.saving || !$scope.editingStudent) return;
+
+                $scope.saving = true;
+                $scope.message = "";
+                $scope.error = "";
+
+                var id = $scope.editingStudent._id;
+
+                $http.put("/students/" + encodeURIComponent(id), {
+                    name: $scope.editingStudent.name,
+                    department: $scope.editingStudent.department
+                })
+                .then(function(response) {
+                    var index = $scope.students.findIndex(
+                        function(student) {
+                            return student._id === id;
+                        }
+                    );
+
+                    if (index !== -1) {
+                        $scope.students[index] = response.data;
+                    }
+
+                    $scope.editingStudent = null;
+                    $scope.message = "Student updated successfully!";
+                })
+                .catch(function(response) {
+                    $scope.error =
+                        (response.data && response.data.error) ||
+                        "Update failed.";
+                })
+                .finally(function() {
+                    $scope.saving = false;
+                });
+            };
+
+            // Cancel editing
+            $scope.cancelEdit = function() {
+                $scope.editingStudent = null;
+                $scope.error = "";
+            };
+
+            // DELETE: Remove a student
+            $scope.removeStudent = function(id) {
+                $scope.message = "";
+                $scope.error = "";
+
+                $http.delete("/students/" + encodeURIComponent(id))
+                    .then(function() {
+                        $scope.students = $scope.students.filter(
+                            function(student) {
+                                return student._id !== id;
+                            }
+                        );
+
+                        $scope.message = "Student deleted successfully!";
+                    })
+                    .catch(function(response) {
+                        $scope.error =
+                            (response.data && response.data.error) ||
+                            "Delete failed.";
+                    });
+            };
+
+            // Load students when page opens
+            $scope.loadStudents();
+
+        });
+    </script>
+
+</body>
+</html>
