@@ -1,18 +1,11 @@
-
 from lxml import etree
 
+parser = etree.XMLParser(dtd_validation=True)
+
 try:
-    with open("student.dtd", "rb") as dtd_file:
-        dtd = etree.DTD(dtd_file)
-
-    xml_doc = etree.parse("student.xml")
-
-    if dtd.validate(xml_doc):
-        print("XML is valid!")
-        print("DTD validation successful!")
-    else:
-        print("XML is invalid!")
-        print(dtd.error_log)
-
-except Exception as error:
-    print("Error:", error)
+    tree = etree.parse("students.xml", parser)
+    print("XML is VALID")
+    print("DTD verification successful!")
+except etree.XMLSyntaxError as e:
+    print("XML is INVALID")
+    print(e)
