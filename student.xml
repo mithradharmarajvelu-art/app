@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE student SYSTEM "student.dtd">
-
-<student>
-    <rollno>101</rollno>
-    <name>Mithra</name>
-    <department>CSE</department>
-    <year>Final Year</year>
-</student>
